@@ -22,7 +22,7 @@ module Grad
       [ '--file',  '-f', GetoptLong::REQUIRED_ARGUMENT ],
       [ '--format', '-F', GetoptLong::REQUIRED_ARGUMENT ],
       [ '--help', '-h', GetoptLong::NO_ARGUMENT ],
-      [ '--header', '-H', GetoptLong::REQUIRED_ARGUMENT ],
+      [ '--header_host', '-H', GetoptLong::REQUIRED_ARGUMENT ],
       [ '--picture', '-p', GetoptLong::NO_ARGUMENT ],
       [ '--regex', '-r', GetoptLong::REQUIRED_ARGUMENT ],
       [ '--verbose', '-v', GetoptLong::NO_ARGUMENT ]
@@ -65,8 +65,8 @@ Options:
 -h|--help:
   show help
 
--H|--header "<name>: <value>"
-  set header
+-H|--header_host <host>
+  set Host header to <host>
 
 -l|--logto </log/to/file>
   output log file
@@ -79,8 +79,8 @@ Options:
 
       HELP
       exit 0
-      when '--header'
-        @header = arg
+      when '--header_host'
+        @header_host = arg
       when '--logto'
         @log_dst = arg
       when '--picture'
@@ -98,6 +98,7 @@ Options:
     @port ||= '80'
     @format ||= nil
     @regex ||= nil
+    @header_host ||= nil
     @continual ||= false
     @debug ||= false
     @log_dst ||= '/tmp/grad.log'
@@ -123,6 +124,7 @@ Options:
     @launcher.log  = @log
     @launcher.host = @host
     @launcher.port = @port
+    @launcher.header_host = @header_host 
 
     # read input and populate @input_q 
     #
@@ -164,7 +166,7 @@ Options:
     grad_dashboard = Grad::Dashboard.new(grad_watcher)
     grad_dashboard.host = @host
     grad_dashboard.port = @port
-    grad_dashboard.header = @header
+    grad_dashboard.header_host = @header_host
     grad_dashboard.log_dst = @log_dst
 
     interrupted = false
