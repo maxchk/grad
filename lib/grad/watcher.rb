@@ -1,7 +1,7 @@
 require 'thread'
-module Grad; class Monitor
+module Grad; class Watcher
   attr_reader :cpu, :cpu_thread, :loadavg, :loadavg_thread, :memory, :memory_thread, :network, :network_thread
-  attr_accessor :network_port
+  attr_accessor :network_port, :launcher
 
   def initialize(sleep_sec = 2)
     @sleep_sec = sleep_sec

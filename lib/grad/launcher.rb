@@ -21,7 +21,7 @@ module Grad; class Launcher
   end
 
   def hit_target(uri, ex_resp)
-    @log.debug "Hitting #{uri} at time #{Time.now}"
+    @log.debug "Hitting #{uri}"
     if @dummy
       @run_q.pop
       return
