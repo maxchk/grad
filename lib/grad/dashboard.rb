@@ -73,7 +73,10 @@ LogTo: #{@log_dst}\n\n")
     # print launcher stats
     #
     addstr("\nGrad launcher stats>\n")
-    addstr("Input_Q: #{@watcher_obj.launcher.input_q.size}, Run_Q: #{@watcher_obj.launcher.run_q.size}\n")
+    addstr("Input_Q: #{@watcher_obj.launcher.input_q.size}, \
+Run_Q: #{@watcher_obj.launcher.run_q.size}\n\
+Req_done: #{@watcher_obj.launcher.results_q.size}, \
+Req_failed: #{@watcher_obj.launcher.failed_q.size}\n")
 
     # print target stats
     #

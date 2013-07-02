@@ -126,13 +126,15 @@ Options:
 
     # set up launcher:
     # - input_q   : parsed log entries go here
-    # - run_q     : scheduled jobs add themself to this queue when start running and remove themself on completion
+    # - run_q     : jobs add themself to this queue when start running and remove themself on completion
     # - results_q : job results saved here 
+    # - failed_q  : failed jobs saved here 
+    @input_q_max = 1000
+    @run_q_max  = 1000
     @launcher = Grad::Launcher.new
     @launcher.log  = @log
     @launcher.host = @host
     @launcher.port = @port
-#    @launcher.host_header = @host_header if @host_header_lock
     @log.info "Target: #{@host}:#{@port}, #{'Host header: ' + @host_header if @host_header_lock}" 
 
     # setup input device 
@@ -147,33 +149,40 @@ Options:
     log_parser.log = @log
     log_parser.host_header = @host_header
     @log.info "Log format: #{log_parser.format}"
+
+    # run log parser
+    #
+#    Thread.niew do
+#      input_dev.each_line do |line|
+#        until @launcher.input_q.size < input_q_max
+#          sleep 1
+#        end
+#        line_parsed = log_parser.read_line(line)
+#        @launcher.input_q.push(line_parsed) if line_parsed
+#      end
+#    end
     Thread.new do
-      input_dev.each_line do |line|
-        until @launcher.input_q.size < 1000
-          sleep 1
+      until input_dev.eof?
+        if @launcher.input_q.size > @input_q_max
+          sleep 0.2
+          next
         end
-        line_parsed = log_parser.read_line(line)
+        line_parsed = log_parser.read_line(input_dev.readline)
         @launcher.input_q.push(line_parsed) if line_parsed
       end
     end
 
-    # activate launcher 
+    # run launcher
     #
     sleep 1 
-    Thread.new do
-      while sleep 0.5 do
-        until @launcher.input_q.empty?
-          @launcher.run_job
-        end
-      end
-    end
+    Thread.new { @launcher.run_jobs }
 
     # setup watcher to start collecting stats 
     # add lancher object for watcher to get access to lancher queues
     #
     grad_watcher = Grad::Watcher.new
     grad_watcher.launcher = @launcher
-    sleep 2
+    sleep 1
 
     # setup dashboard
     #
