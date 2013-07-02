@@ -22,7 +22,7 @@ module Grad
       [ '--file',  '-f', GetoptLong::REQUIRED_ARGUMENT ],
       [ '--format', '-F', GetoptLong::REQUIRED_ARGUMENT ],
       [ '--help', '-h', GetoptLong::NO_ARGUMENT ],
-      [ '--header_host', '-H', GetoptLong::REQUIRED_ARGUMENT ],
+      [ '--host_header', '-H', GetoptLong::REQUIRED_ARGUMENT ],
       [ '--picture', '-p', GetoptLong::NO_ARGUMENT ],
       [ '--regex', '-r', GetoptLong::REQUIRED_ARGUMENT ],
       [ '--verbose', '-v', GetoptLong::NO_ARGUMENT ]
@@ -71,7 +71,7 @@ Options:
 -h|--help:
   show help
 
--H|--header_host <host>
+-H|--host_header <host>
   set Host header to <host>
 
 -l|--logto </log/to/file>
@@ -85,8 +85,8 @@ Options:
 
       HELP
       exit 0
-      when '--header_host'
-        @header_host = arg
+      when '--host_header'
+        @host_header = arg
       when '--logto'
         @log_dst = arg
       when '--picture'
@@ -104,7 +104,8 @@ Options:
     @port ||= '80'
     @format ||= nil
     @regex ||= nil
-    @header_host ||= nil
+    @host_header ||= nil
+    @host_header_lock = false
     @continual ||= false
     @debug ||= false
     @log_dst ||= '/tmp/grad.log'
@@ -131,8 +132,8 @@ Options:
     @launcher.log  = @log
     @launcher.host = @host
     @launcher.port = @port
-    @launcher.header_host = @header_host
-    @log.info "Target: #{@host}:#{@port}, #{'Host header: ' + @header_host if @header_host}" 
+#    @launcher.host_header = @host_header if @host_header_lock
+    @log.info "Target: #{@host}:#{@port}, #{'Host header: ' + @host_header if @host_header_lock}" 
 
     # setup input device 
     #
@@ -144,6 +145,7 @@ Options:
     log_parser = Grad::LogReader.new(@format)
     log_parser.regex = @regex
     log_parser.log = @log
+    log_parser.host_header = @host_header
     @log.info "Log format: #{log_parser.format}"
     Thread.new do
       input_dev.each_line do |line|
@@ -178,7 +180,7 @@ Options:
     grad_dashboard = Grad::Dashboard.new(grad_watcher)
     grad_dashboard.host = @host
     grad_dashboard.port = @port
-    grad_dashboard.header_host = @header_host
+    grad_dashboard.host_header = @host_header
     grad_dashboard.format = log_parser.format
     grad_dashboard.log_src = @read_file ? @read_file : 'STDIN'
     grad_dashboard.log_dst = @log_dst

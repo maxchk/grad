@@ -1,6 +1,6 @@
 require 'curses'
 module Grad; class Dashboard
-  attr_accessor :host, :port, :header_host, :log_dst, :format, :log_src
+  attr_accessor :host, :port, :host_header, :log_dst, :format, :log_src
   include Curses
 
   def initialize(watcher_obj)
@@ -15,7 +15,7 @@ module Grad; class Dashboard
     addstr("=============== Grad Dashboard ===============\n")
     addstr("Target Host: \
 #{@host}:#{@port}, \
-Host header: #{@header_host}\n\
+Host header: #{@host_header}\n\
 Input Log Source: \"#{@log_src}\"\n\
 Input Log Format: \"#{@format}\"\n\
 LogTo: #{@log_dst}\n\n")

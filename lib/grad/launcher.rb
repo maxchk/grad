@@ -2,7 +2,7 @@ require 'thread'
 require 'net/http'
 
 module Grad; class Launcher
-  attr_accessor :log, :host, :port, :header_host
+  attr_accessor :log, :host, :port, :host_header
   attr_reader :input_q, :run_q, :results_q
 
   def initialize
@@ -16,12 +16,12 @@ module Grad; class Launcher
       @log.debug "URL: #{job[:uri]}, Hit in (s): #{job[:t]}"
       @run_q.push('1')
       sleep job[:t]
-      hit_target(job[:uri], job[:resp])
+      hit_target(job[:uri], job[:resp], job[:host_header])
     end
   end
 
-  def hit_target(uri, ex_resp)
-    @log.debug "Target: http://#{@host}:#{@port}/#{uri}, headers: #{'Host: ' + @header_host if @header_host}"
+  def hit_target(uri, ex_resp, host_header = nil)
+    @log.debug "Target: http://#{@host}:#{@port}/#{uri}, headers: #{'Host: ' + host_header if host_header}"
     if @dummy
       @run_q.pop
       return
@@ -29,7 +29,7 @@ module Grad; class Launcher
     begin
       @log.debug "UriHitter: #{Thread.current}"
       req = Net::HTTP::Get.new(uri)
-      req['Host'] = @header_host if @header_host
+      req['Host'] = host_header if host_header
       start_time = Time.new
       resp, data = Net::HTTP.start(@host, @port) {|http| http.request(req)} 
       elapsed_time = Time.now - start_time 

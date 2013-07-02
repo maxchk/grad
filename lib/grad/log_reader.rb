@@ -3,7 +3,7 @@ require 'time'
 require 'uri'
 
 module Grad; class LogReader
-  attr_accessor :regex, :log
+  attr_accessor :regex, :log, :host_header
   attr_reader :format_common, :format_combined, :format
 
   def initialize(format = nil)
@@ -33,7 +33,8 @@ module Grad; class LogReader
       uri = URI::parse(entry_uri)
       if uri.path[/#{@regex}/]
         @log.debug "Found match: #{entry_uri} =~ #{@regex}"
-        return {:uri => entry_uri, :resp => entry_resp, :t => entry_offset} 
+        host_header = @host_header ? @host_header : uri.hostname
+        return {:uri => uri.path, :resp => entry_resp, :t => entry_offset, :host_header => host_header} 
       else
         return nil
       end
