@@ -4,10 +4,22 @@ require 'uri'
 
 module Grad; class LogReader
   attr_accessor :regex, :log
+  attr_reader :format_common, :format_combined, :format
 
   def initialize(format = nil)
-    format ||= '%h %l %u %t \"%r\" %>s %b \"%{Referer}i\" \"%{User-agent}i\" %w'
-    @parser = ApacheLogRegex.new(format)
+    @format_common = '%h %l %u %t \"%r\" %>s %b'
+    @format_combined = '%h %l %u %t \"%r\" %>s %b \"%{Referer}i\" \"%{User-agent}i\"'
+    case format
+    when /%combined/
+      @format = format.gsub(/%combined/, @format_combined)
+    when /%common/
+      @format = format.gsub(/%common/, @format_common)
+    when nil
+      @format = @format_combined
+    else
+      @format = format
+    end
+    @parser = ApacheLogRegex.new(@format)
   end
 
   def read_line(line)
@@ -26,7 +38,7 @@ module Grad; class LogReader
         return nil
       end
     rescue Exception => e
-      @log.error "Failed to read line: #{e.message}"
+      @log.error "Failed to read line: \"#{line}\", #{e.message}"
       return nil
     end
   end

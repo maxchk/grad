@@ -61,6 +61,12 @@ Options:
 
 -F|--format <format>:
   specify log format string
+  for 'common' and 'combined' formats names can be used as following:
+  -F %combined
+  or:
+  -F "%combined %w"
+  or:
+  -F "%h %l %u %t \"%r\" %>s %b \"%{Referer}i\" \"%{User-agent}i\""
 
 -h|--help:
   show help
@@ -108,6 +114,7 @@ Options:
     @log_level ||= 'DEBUG'
     @log = Logger.new(@log_dst)
     @log.level = Object.const_get('Logger').const_get(@log_level)
+    @log.info "=== Grad started run ===" 
 
     # check if host is presented
     #
@@ -124,15 +131,20 @@ Options:
     @launcher.log  = @log
     @launcher.host = @host
     @launcher.port = @port
-    @launcher.header_host = @header_host 
+    @launcher.header_host = @header_host
+    @log.info "Target: #{@host}:#{@port}, #{'Host header: ' + @header_host if @header_host}" 
 
-    # read input and populate @input_q 
+    # setup input device 
     #
     input_dev = File.open(@read_file, 'r') if @read_file
     input_dev ||= ARGF
-    log_parser = Grad::LogReader.new
+
+    # setup log parser
+    #
+    log_parser = Grad::LogReader.new(@format)
     log_parser.regex = @regex
     log_parser.log = @log
+    @log.info "Log format: #{log_parser.format}"
     Thread.new do
       input_dev.each_line do |line|
         until @launcher.input_q.size < 1000
@@ -167,6 +179,8 @@ Options:
     grad_dashboard.host = @host
     grad_dashboard.port = @port
     grad_dashboard.header_host = @header_host
+    grad_dashboard.format = log_parser.format
+    grad_dashboard.log_src = @read_file ? @read_file : 'STDIN'
     grad_dashboard.log_dst = @log_dst
 
     interrupted = false
