@@ -3,12 +3,13 @@
 Grad is ruby based load testing tool that replays logs to generate an exact 
 load behaviour patterns against target site as it is recorded in logs.
 
+Replays logs in Apache/NCSA log format.
+
 Name Grad is coming from:
 "The BM-21 launch vehicle (Russian: БМ-21 "Град"), (Grad) a Soviet truck-mounted 122 mm multiple rocket launcher.
 BM stands for boyevaya mashina, ‘combat vehicle’, and the nickname grad means ‘hail’"
 (http://en.wikipedia.org/wiki/BM-21_Grad)
 
-Replays logs in Apache/NCSA log format.
 
 ##Examples of usage:
 
