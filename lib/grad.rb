@@ -71,9 +71,6 @@ Options:
 
 -m|--mock
   dry run, don't hit the target, just log what would be replayed
-  mock: 
-        this is a default
-  nuts: replay logs as fast as possible, time offsets are ignored
 
 -o|--output <dash|pipe>
   set output method. Default is 'dash'

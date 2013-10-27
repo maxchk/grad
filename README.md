@@ -14,19 +14,21 @@ BM stands for boyevaya mashina, ‘combat vehicle’, and the nickname grad mean
 ##Examples of usage:
 
 
-######Will replay log file www.example.com.log against staging.example.com site
-    grad -f www.example.com.log -F %combined staging.example.com
-
-######Will do the same thing
+######Replay log file www.example.com.log against staging.example.com site
     cat www.example.com.log | grad -F %combined staging.example.com
 
-TIP: pipe can be handy with varnishncsa. Use --continual option with it.
+TIP: can also be used varnishncsa or similar tool
 
 ######If you want to be more specific with logs format
-    grad -f www.example.com.log -F "%h %l %u %t \"%r\" %>s %b \"%{Referer}i\" \"%{User-agent}i\" %w" 
+    cat www.example.com.log | grad -F "%h %l %u %t \"%r\" %>s %b \"%{Referer}i\" \"%{User-agent}i\" %w" staging.example.com
 
-######Or if you want to replay against single server, port 8080
-    grad -f www.example.com.log -H www.example.com server1:8080
+######Or if you want to replay against single server, port 8080, setting host header to 'www.example.com'
+    cat www.example.com.log | grad -H www.example.com server1:8080
+
+######If you want to skip deplays between log entries and replay logs as fast as possible
+     cat www.example.com.log | grad -s staging.example.com
+
+TIP: you may want to use --skip with --limit option
 
 ######For all help run:
     grad --help
