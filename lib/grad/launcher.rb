@@ -3,19 +3,29 @@ require 'net/http'
 require 'time'
 
 module Grad; class Launcher
-  attr_accessor :log, :host, :port, :host_header, :jobs_max
-  attr_reader :input_q, :done_q, :fail_q, :drop_q
+  attr_accessor :host_header, :resp_t, :mock, :skip, :pipe 
+  attr_reader :input_q, :done_q, :fail_q, :drop_q, :jobs_max
 
-  def initialize
+  def initialize(host, port, log, max_req = nil)
     @input_q = Queue.new
     @done_q  = Queue.new
     @fail_q  = Queue.new
     @drop_q  = Queue.new
+    @resp_t  = Queue.new
 
     @jobs_run  = ThreadGroup.new
-    @jobs_max  = 500
-    @run_sleep = 0.001 
     @neg_allow = 10
+
+    @host = host
+    @port = port
+    @log  = log
+    if max_req
+      @jobs_max  = max_req
+      @run_sleep = 1
+    else
+      @jobs_max = 500
+      @run_sleep = 0.001
+    end
   end
 
   # start main launcher thread
@@ -43,8 +53,7 @@ module Grad; class Launcher
   # process input queue
   #
   def run_input
-    return if @input_q.empty?
-    slots_free.times { run_job(@input_q.pop) }
+    slots_free.times { run_job(@input_q.pop) } unless @input_q.empty?
   end
 
   # run a job
@@ -56,20 +65,24 @@ module Grad; class Launcher
     Thread.new(job) do |j|
       @log.debug "#{j}: run in #{run_in}"
       sleep run_in if run_in > 0
-      hit(j[:uri], j[:resp], j[:host_header])
+      hit(j[:uri], j[:resp], j[:raw], j[:host_header])
     end
   end
 
   # 
   #
   def calc_run(t)
-    run_t = ( @start_time + t ) - Time.now.to_i
-    if run_t + @neg_allow > 0
-      run_t
+    if @skip
+      0
     else
-      @log.error "#{job}: passed negative ttl, #{job[:t]} seconds behind, max allowed is #@neg_allow"
-      @drop_q.push(job)
-      nil
+      run_t = ( @start_time + t ) - Time.now.to_i
+      if run_t + @neg_allow > 0
+        run_t
+      else
+        @log.error "#{job}: passed negative ttl, #{job[:t]} seconds behind, max allowed is #@neg_allow"
+        @drop_q.push(job)
+        nil
+      end
     end
   end
 
@@ -87,21 +100,22 @@ module Grad; class Launcher
 
   # hit a target
   #
-  def hit(uri, ex_resp, host_header = nil)
-    @log.debug "Target: http://#{@host}:#{@port}/#{uri}, headers: #{'Host: ' + host_header if host_header}"
-    return if @dummy
-    begin
+  def hit(uri, ex_resp, raw, host_header = nil)
+    @log.debug "url: http://#{@host}:#{@port}/#{uri}, headers: #{'Host: ' + host_header if host_header}"
+    puts raw if @pipe
+    unless @mock
       @log.debug "UriHitter: #{Thread.current}"
       req = Net::HTTP::Get.new(uri)
       req['Host'] = host_header if host_header
       start_time = Time.new
       resp, data = Net::HTTP.start(@host, @port) {|http| http.request(req)} 
-      elapsed_time = Time.now - start_time 
+      elapsed_time = Time.now - start_time
+      @resp_t.push(elapsed_time) 
       @done_q.push({ :resp => resp.code, :ex_resp => ex_resp, :uri => uri, :r_time => elapsed_time, :s_time => start_time})
-    rescue
-      @log.error "Request failed: #{uri}"
-      @fail_q.push({ :uri => uri, :host => @host, :host_header => host_header })
     end
+  rescue
+    @log.error "Request failed: #{uri}"
+    @fail_q.push({ :uri => uri, :host => @host, :host_header => host_header })
   end
 
 end; end

@@ -84,13 +84,16 @@ Req_drop: #{@watcher_obj.launcher.drop_q.size}\n\
     # print target stats
     #
     addstr("\nGrad target stats>\n")
+    addstr("\
+Resp time (med): #{@watcher_obj.resp_time_mediana},\n\
+")
 
     # refresh screen
     #
     refresh
   end
 
-  def power_off
+  def stop
     close_screen
   end
 end; end

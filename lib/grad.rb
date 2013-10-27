@@ -17,49 +17,36 @@ module Grad
     # read options
     #
     opts = GetoptLong.new(
-      [ '--continual', '-c', GetoptLong::NO_ARGUMENT ],
-      [ '--dummy', '-d', GetoptLong::NO_ARGUMENT ],
-      [ '--file',  '-f', GetoptLong::REQUIRED_ARGUMENT ],
       [ '--format', '-F', GetoptLong::REQUIRED_ARGUMENT ],
       [ '--help', '-h', GetoptLong::NO_ARGUMENT ],
       [ '--host_header', '-H', GetoptLong::REQUIRED_ARGUMENT ],
+      [ '--log', '-l', GetoptLong::REQUIRED_ARGUMENT ],
+      [ '--limit', '-L', GetoptLong::REQUIRED_ARGUMENT ],
+      [ '--mock', '-m', GetoptLong::REQUIRED_ARGUMENT ],
+      [ '--output', '-o', GetoptLong::REQUIRED_ARGUMENT ],
       [ '--picture', '-p', GetoptLong::NO_ARGUMENT ],
       [ '--regex', '-r', GetoptLong::REQUIRED_ARGUMENT ],
+      [ '--skip', '-s', GetoptLong::NO_ARGUMENT ],
       [ '--verbose', '-v', GetoptLong::NO_ARGUMENT ]
     )
+
+    port   = '80'
+    mock   = false
+    skip   = false
+    output = 'dash'
+    regex  = nil
+    limit  = nil
+    logto  = '/tmp/grad.log'
     opts.each do |opt, arg|
       case opt
-      when '--continual'
-        @continual = true
-      when '--dummy'
-        $dummy = true
-      when '--file'
-        @read_file = arg
       when '--format'
         @format = arg
-      when '--regex'
-        @regex = arg
       when '--help'
         puts <<-HELP
 grad [OPTIONS] HOST[:PORT]
 
 Options:
--c|--continual
-  keep reading input even when there is no data
-  useful when used with tools like varnishreplay
-
--d|--dummy:
-  dryrun
-
--f|--file <file>:
-  file to read log from
-  otherwise reads STDIN, i.e 
-    cat apache.log | grad localhost:80
-    and
-    grad -f apache.log localhost:80
-  do same thing
-
--F|--format <format>:
+-F|--format <format>
   specify log format string
   for 'common' and 'combined' formats names can be used as following:
   -F %combined
@@ -69,93 +56,126 @@ Options:
   -F "%h %l %u %t \"%r\" %>s %b \"%{Referer}i\" \"%{User-agent}i\""
   default value: combined
 
--h|--help:
+-h|--help
   show help
 
 -H|--host_header <host>
   set Host header to <host>
 
--l|--logto </log/to/file>
+-l|--log </log/to/file>
   output log file
 
--p|--picture:
+-L|--limit <N>
+  set a limit for max requests per second
+  may be useful when running mode 'nuts'
+
+-m|--mock
+  dry run, don't hit the target, just log what would be replayed
+  mock: 
+        this is a default
+  nuts: replay logs as fast as possible, time offsets are ignored
+
+-o|--output <dash|pipe>
+  set output method. Default is 'dash'
+  dash - dashboard, prints 'top' like screen during run
+  pipe - pipe, prints entries from log as they are going through a log launcher
+
+-p|--picture
   print ascii picture of Grad BM-21
 
--r|--regex <regex>:
+-r|--regex <regex>
   filter logs by regex
+
+-s|--skip
+  skip deplays
+  by default it replays logs respecting time offsets in original log file (imitate original load) 
+  --skip tells to replay logs as fast as possible
+  NOTE: you may want to use --skip with --limit option
 
       HELP
       exit 0
       when '--host_header'
         @host_header = arg
-      when '--logto'
-        @log_dst = arg
+      when '--log'
+        logto = arg
+      when '--limit'
+        limit = arg.to_i
+      when '--mock'
+        mock = true
+      when '--output'
+        output = arg
       when '--picture'
         Grad::Pic.print
         exit 0
+      when '--regex'
+        regex = arg
+      when '--skip'
+        skip = true
       when '--verbose'
         @log_level = 'DEBUG'
       end
     end
 
-    # set host, port, format, regex and start_time
+    # set host and port
     #
-    @host, @port = $*[0].split(':')
+    host, port = $*[0].split(':')
+    port    ||= '80'
     ARGV.delete_at(0)
-    @port      ||= '80'
-    @continual ||= false
-    @debug     ||= false
-    @log_dst   ||= '/tmp/grad.log'
- 
+
+    # set default values
+    #
+    @debug   ||= false
+
+    # set output
+    #
+    dash = pipe = nil
+    case output 
+    when 'dash'
+      dash = true
+    when 'pipe'
+      pipe = true
+    else
+      log.fatal "#{output}: no support for output method"
+      exit 2
+    end
+
     # set logger
     #
     @log_level ||= 'DEBUG'
-    log = Logger.new(@log_dst)
+    log = Logger.new(logto)
     log.level = Object.const_get('Logger').const_get(@log_level)
     log.info "=== Grad started run ===" 
 
     # check if host is presented
     #
-    unless @host
+    unless host
       log.fatal 'Host is missing'
       exit 2
     end
 
-    # setup input device 
-    #
-    if @read_file
-      unless File.exist?(@read_file)
-        log.fatal "#@read_file: file not found"
-        exit 2
-      end
-      input_dev = File.open(@read_file, 'r')
-    else
-      input_dev ||= ARGF
-    end
-
     # set up launcher
     #
-    launcher = Grad::Launcher.new
-    launcher.log  = log
-    launcher.host = @host
-    launcher.port = @port
-    log.info "Target: #{@host}:#{@port}, #{'Host header: ' + @host_header if @host_header}" 
+    launcher = Grad::Launcher.new(host, port, log, limit)
+    launcher.mock = mock
+    launcher.skip = skip
+    launcher.pipe = pipe
+    log.info "Target: #{host}:#{port}, #{"Host header: #@host_header, " if @host_header}, jobs_max: #{launcher.jobs_max}" 
 
     # setup log parser
     #
     log_reader = Grad::LogReader.new(@format)
-    log_reader.regex = @regex
-    log_reader.log = log
+    log_reader.regex = regex
+    log_reader.log   = log
     log_reader.host_header = @host_header
     log.info "Log format: #{log_reader.format}"
 
     # start log reader
     #
     input_max = 1000
-    Thread.new do
-      until input_dev.eof?
+    reader = Thread.new do
+      until ARGF.eof?
         if launcher.input_q.size <= input_max
-          launcher.input_q.push(log_reader.read_line(input_dev.readline))
+          launcher.input_q.push(log_reader.read_line(ARGF.readline))
         else
           log.info "Reader asleep for 1 sec"
           sleep 1
@@ -179,36 +199,40 @@ Options:
 
     # setup dashboard
     #
-    dashboard = Grad::Dashboard.new(watcher)
-    dashboard.host = @host
-    dashboard.port = @port
-    dashboard.host_header = @host_header
-    dashboard.format = log_reader.format
-    dashboard.log_src = @read_file ? @read_file : 'STDIN'
-    dashboard.log_dst = @log_dst
+    if dash
+      dashboard = Grad::Dashboard.new(watcher)
+      dashboard.host = host
+      dashboard.port = port
+      dashboard.host_header = @host_header
+      dashboard.format = log_reader.format
+      dashboard.log_src = 'STDIN'
+      dashboard.log_dst = logto
+    end
 
     interrupted = false
     trap("INT") { interrupted = true }
     begin
-      while true
+      while sleep 2
+        # abort if INT is sent
+        #
         abort if interrupted
 
-        # keep checking in order until all queues are done - input_q and run_q
+        # keep checking in order until all queues are done
         #
-        if launcher.finished? && !@continual
-          dashboard.power_off
-          launcher.stop
+        if launcher.finished? && !reader.alive?
           log.info "All queues are done."
           break
         end
-        dashboard.print_out
-        sleep 2
+
+        # update dashboard screen
+        #
+        dashboard.print_out if dash
       end
     rescue SystemExit
-      dashboard.power_off
-      launcher.stop
       log.info 'Interrupted. Finishing run.'
     end
+    dashboard.stop if dash
+    launcher.stop
 
     # log successful
     #
@@ -223,6 +247,6 @@ Options:
     until launcher.fail_q.empty?
       log.info launcher.fail_q.pop
     end
-    puts "Logs recorded to #{@log_dst}"
+    puts "Logs recorded to #{logto}"
   end
 end

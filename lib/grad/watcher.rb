@@ -1,6 +1,8 @@
 require 'thread'
+require 'time'
+
 module Grad; class Watcher
-  attr_reader :cpu, :cpu_thread, :loadavg, :loadavg_thread, :memory, :memory_thread, :network, :network_thread
+  attr_reader :cpu, :cpu_thread, :loadavg, :loadavg_thread, :memory, :memory_thread, :network, :network_thread, :resp_time_mediana
   attr_accessor :network_port, :launcher
 
   def initialize(sleep_sec = 2)
@@ -10,10 +12,13 @@ module Grad; class Watcher
     @loadavg = Hash.new
     @memory = Hash.new
     @network = Hash.new
+    @resp_stats = {}
+    @resp_time_mediana = 0
     watch_cpu
     watch_loadavg
     watch_memory
     watch_network
+    watch_launcher
   end
 
   # print meminfo in similar format as top does
@@ -102,6 +107,46 @@ module Grad; class Watcher
       end   
     end
   end
+
+  def watch_launcher
+    Thread.new do     
+      while sleep @sleep_sec
+        next if !@launcher
+        next if @launcher.resp_t.empty?
+
+        # process launcher response vals
+        until @launcher.resp_t.empty? do
+          r = @launcher.resp_t.pop.round(3)
+          @resp_stats.key?(r) ? @resp_stats[r] = @resp_stats[r] + 1 : @resp_stats[r] = 1
+        end
+
+        # caclucate response (mediana)
+        @resp_time_mediana = calc_resp_mediana(@resp_stats)
+      end
+    end
+  end
+
+=begin
+  def calc_resp_every(n)
+    next_update ||= Time.now + n
+
+    resp_hash = {}
+    if next_update < Time.now
+      resp_hash = @resp_stats.dup
+
+    end
+  end
+=end
+
+  def calc_resp_mediana(resp_hash)
+    half = resp_hash.values.inject(0) {|sum, i| sum + i} / 2
+    now_at = 0
+    resp_hash.to_a.sort.each do |i|
+      now_at = now_at + i[1]
+      return i[0] if now_at > half
+    end
+  end
+
 end; end
 
 

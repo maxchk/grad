@@ -34,7 +34,7 @@ module Grad; class LogReader
       if uri.path[/#{@regex}/]
         @log.debug "Found match: #{entry_uri} =~ #{@regex}"
         host_header = @host_header ? @host_header : uri.hostname
-        return { :uri => uri.path, :resp => entry_resp, :t => entry_offset, :host_header => host_header } 
+        return { :uri => uri.path, :resp => entry_resp, :t => entry_offset, :host_header => host_header, :raw => line } 
       else
         return nil
       end
