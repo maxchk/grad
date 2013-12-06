@@ -67,7 +67,6 @@ Options:
 
 -L|--limit <N>
   set a limit for max requests per second
-  may be useful when running mode 'nuts'
 
 -m|--mock
   dry run, don't hit the target, just log what would be replayed
@@ -84,8 +83,8 @@ Options:
   filter logs by regex
 
 -s|--skip
-  skip deplays
-  by default it replays logs respecting time offsets in original log file (imitate original load) 
+  skip delays
+  by default Grad replays logs respecting time offsets in original log file
   --skip tells to replay logs as fast as possible
   NOTE: you may want to use --skip with --limit option
 
