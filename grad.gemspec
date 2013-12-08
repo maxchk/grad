@@ -3,7 +3,7 @@ Gem::Specification.new do |s|
   s.version     = '0.6.1'
   s.date        = '2013-06-14'
   s.executables << 'grad'
-#  s.add_runtime_dependency 'apachelogregex'
+  s.add_runtime_dependency 'apachelogregex'
 #  s.add_runtime_dependency 'ruby-terminfo'
   s.summary     = 'Grad - LogsReplay tool'
   s.description = 'Logs replay tool'
