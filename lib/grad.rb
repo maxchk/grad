@@ -27,6 +27,7 @@ module Grad
       [ '--picture', '-p', GetoptLong::NO_ARGUMENT ],
       [ '--regex', '-r', GetoptLong::REQUIRED_ARGUMENT ],
       [ '--skip', '-s', GetoptLong::NO_ARGUMENT ],
+      [ '--user', '-u', GetoptLong::REQUIRED_ARGUMENT ],
       [ '--verbose', '-v', GetoptLong::NO_ARGUMENT ]
     )
 
@@ -37,6 +38,7 @@ module Grad
     regex  = nil
     limit  = nil
     logto  = '/tmp/grad.log'
+    user   = pass = nil
     opts.each do |opt, arg|
       case opt
       when '--format'
@@ -88,6 +90,10 @@ Options:
   --skip tells to replay logs as fast as possible
   NOTE: you may want to use --skip with --limit option
 
+-u|--user <user:pass>
+  user and password for server auth.
+  NOTE: currently only basic auth is supported
+
       HELP
       exit 0
       when '--host_header'
@@ -107,6 +113,8 @@ Options:
         regex = arg
       when '--skip'
         skip = true
+      when '--user'
+        user, pass = arg.split(':')
       when '--verbose'
         @log_level = 'DEBUG'
       end
@@ -115,7 +123,7 @@ Options:
     # set host and port
     #
     host, port = $*[0].split(':')
-    port    ||= '80'
+    port ||= '80'
     ARGV.delete_at(0)
 
     # set default values
@@ -155,6 +163,8 @@ Options:
     launcher.mock = mock
     launcher.skip = skip
     launcher.pipe = pipe
+    launcher.user = user
+    launcher.pass = pass
     log.info "Target: #{host}:#{port}, #{"Host header: #@host_header, " if @host_header}, jobs_max: #{launcher.jobs_max}" 
 
     # setup log parser
@@ -201,7 +211,6 @@ Options:
       dashboard.port = port
       dashboard.host_header = @host_header
       dashboard.format = log_reader.format
-      dashboard.log_src = 'STDIN'
       dashboard.log_dst = logto
     end
 
