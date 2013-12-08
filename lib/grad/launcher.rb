@@ -3,7 +3,7 @@ require 'net/http'
 require 'time'
 
 module Grad; class Launcher
-  attr_accessor :host_header, :resp_t, :mock, :skip, :pipe, :user, :pass 
+  attr_accessor :host_header, :resp_t, :mock, :skip, :pipe, :user, :pass, :proxy_addr, :proxy_port 
   attr_reader :input_q, :done_q, :fail_q, :drop_q, :jobs_max
 
   def initialize(host, port, log, max_req = nil)
@@ -109,9 +109,13 @@ module Grad; class Launcher
       req['Host'] = host_header if host_header
       req.basic_auth(@user, @pass) if @user and @pass
       start_time = Time.new
-      resp, data = Net::HTTP.start(@host, @port) {|http| http.request(req)} 
+      if @proxy_addr and @proxy_port
+        resp, data = Net::HTTP::Proxy(@proxy_addr, @proxy_port).start(@host, @port) {|http| http.request(req)}
+      else
+        resp, data = Net::HTTP.start(@host, @port) {|http| http.request(req)}
+      end
       elapsed_time = Time.now - start_time
-      @resp_t.push(elapsed_time) 
+      @resp_t.push(elapsed_time)
       @done_q.push({ :resp => resp.code, :ex_resp => ex_resp, :uri => uri, :r_time => elapsed_time, :s_time => start_time})
     end
   rescue

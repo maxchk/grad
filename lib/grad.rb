@@ -25,6 +25,7 @@ module Grad
       [ '--mock', '-m', GetoptLong::REQUIRED_ARGUMENT ],
       [ '--output', '-o', GetoptLong::REQUIRED_ARGUMENT ],
       [ '--picture', '-p', GetoptLong::NO_ARGUMENT ],
+      [ '--proxy', '-P', GetoptLong::REQUIRED_ARGUMENT ],
       [ '--regex', '-r', GetoptLong::REQUIRED_ARGUMENT ],
       [ '--skip', '-s', GetoptLong::NO_ARGUMENT ],
       [ '--user', '-u', GetoptLong::REQUIRED_ARGUMENT ],
@@ -39,6 +40,7 @@ module Grad
     limit  = nil
     logto  = '/tmp/grad.log'
     user   = pass = nil
+    proxy_addr = proxy_port = nil
     opts.each do |opt, arg|
       case opt
       when '--format'
@@ -81,6 +83,9 @@ Options:
 -p|--picture
   print ascii picture of Grad BM-21
 
+-P|--proxy <proxy_addr:proxy_port>
+  proxy server name and port
+
 -r|--regex <regex>
   filter logs by regex
 
@@ -109,6 +114,8 @@ Options:
       when '--picture'
         Grad::Pic.print
         exit 0
+      when '--proxy'
+        proxy_addr, proxy_port = arg.split(':')
       when '--regex'
         regex = arg
       when '--skip'
@@ -165,7 +172,9 @@ Options:
     launcher.pipe = pipe
     launcher.user = user
     launcher.pass = pass
-    log.info "Target: #{host}:#{port}, #{"Host header: #@host_header, " if @host_header}, jobs_max: #{launcher.jobs_max}" 
+    launcher.proxy_addr = proxy_addr
+    launcher.proxy_port = proxy_port
+    log.info "Target: #{host}:#{port}, #{"Proxy: #{proxy_addr}:#{proxy_port}, " if proxy_addr} #{"Host header: #@host_header, " if @host_header} jobs_max: #{launcher.jobs_max}" 
 
     # setup log parser
     #
