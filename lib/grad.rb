@@ -17,6 +17,7 @@ module Grad
     # read options
     #
     opts = GetoptLong.new(
+      [ '--accelerate', '-a', GetoptLong::REQUIRED_ARGUMENT ],
       [ '--format', '-F', GetoptLong::REQUIRED_ARGUMENT ],
       [ '--help', '-h', GetoptLong::NO_ARGUMENT ],
       [ '--host_header', '-H', GetoptLong::REQUIRED_ARGUMENT ],
@@ -32,6 +33,7 @@ module Grad
       [ '--verbose', '-v', GetoptLong::NO_ARGUMENT ]
     )
 
+    accel  = 1
     port   = '80'
     mock   = false
     skip   = false
@@ -43,6 +45,8 @@ module Grad
     proxy_addr = proxy_port = nil
     opts.each do |opt, arg|
       case opt
+      when '--accelerate'
+        accel = arg.to_i
       when '--format'
         @format = arg
       when '--help'
@@ -50,6 +54,9 @@ module Grad
 grad [OPTIONS] HOST[:PORT]
 
 Options:
+-a|--accelerate <N>
+  accelerate by N of requests when replaying logs
+
 -F|--format <format>
   specify log format string
   for 'common' and 'combined' formats names can be used as following:
@@ -189,8 +196,9 @@ Options:
     input_max = 1000
     reader = Thread.new do
       until ARGF.eof?
-        if launcher.input_q.size <= input_max
-          launcher.input_q.push(log_reader.read_line(ARGF.readline))
+        if (launcher.input_q.size + accel) <= input_max
+          l = log_reader.read_line(ARGF.readline)
+          accel.times { launcher.input_q.push(l) }
         else
           log.info "Reader asleep for 1 sec"
           sleep 1

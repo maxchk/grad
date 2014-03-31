@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name        = 'grad'
-  s.version     = '0.6.2'
+  s.version     = '0.7.0'
   s.date        = '2013-06-14'
   s.executables << 'grad'
   s.add_runtime_dependency 'apachelogregex'
