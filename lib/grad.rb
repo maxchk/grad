@@ -83,8 +83,8 @@ Options:
   dry run, don't hit the target, just log what would be replayed
 
 -o|--output <dash|pipe>
-  set output method. Default is 'dash'
-  dash - dashboard, prints 'top' like screen during run
+  set output method. Default is 'dash' on Linux/FreeBSD, otherwise pipe
+  dash - dashboard, prints 'top' like screen during run, only available on Linux/FreeBSD
   pipe - pipe, prints entries from log as they are going through a log launcher
 
 -p|--picture
@@ -134,6 +134,13 @@ Options:
       end
     end
 
+    # check if host is presented
+    #
+    if ARGV.length != 1
+      $stderr.puts "Wrong arguments (try --help)"
+      exit 2
+    end
+
     # set host and port
     #
     host, port = $*[0].split(':')
@@ -147,29 +154,18 @@ Options:
     # set output
     #
     dash = pipe = nil
-    case output 
-    when 'dash'
+    if output  == 'dash' and ['/proc/meminfo','/proc/loadavg','/proc/stat','/proc/net/tcp'].all? {|f| File.file?(f)}
       dash = true
-    when 'pipe'
-      pipe = true
     else
-      log.fatal "#{output}: no support for output method"
-      exit 2
+      pipe = true
     end
 
     # set logger
     #
-    @log_level ||= 'DEBUG'
+    @log_level ||= 'INFO'
     log = Logger.new(logto)
     log.level = Object.const_get('Logger').const_get(@log_level)
     log.info "=== Grad started run ===" 
-
-    # check if host is presented
-    #
-    unless host
-      log.fatal 'Host is missing'
-      exit 2
-    end
 
     # set up launcher
     #
@@ -213,16 +209,15 @@ Options:
     launcher.start 
     log.info "Started launcher"
 
-    # setup watcher to start collecting stats 
-    # add lancher object for watcher to get access to lancher queues
-    #
-    watcher = Grad::Watcher.new
-    watcher.launcher = launcher
-    sleep 1
-
     # setup dashboard
     #
     if dash
+      # setup watcher to start collecting stats 
+      # add lancher object for watcher to get access to lancher queues
+      #
+      watcher = Grad::Watcher.new
+      watcher.launcher = launcher
+      sleep 1
       dashboard = Grad::Dashboard.new(watcher)
       dashboard.host = host
       dashboard.port = port
