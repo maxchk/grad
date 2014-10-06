@@ -1,6 +1,10 @@
-#!/usr/bin/ruby
+#!/usr/bin/env ruby
 
-require 'rubygems'
+unless $:.include?(File.dirname(__FILE__) + '/../lib/')
+  $: << File.dirname(__FILE__) + '/../lib'
+end
+
+require 'rubygems' if RUBY_VERSION < '1.9.0'
 require 'grad'
-Grad.main
 
+Grad.main
