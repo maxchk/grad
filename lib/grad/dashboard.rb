@@ -47,7 +47,7 @@ LogTo: #{@log_dst}\n\n")
 
     # print memory stats
     mem_u = @watcher_obj.memory[:units]
-    if @watcher_obj.memory[:m_total] >= @watcher_obj.memory[:s_total] 
+    if @watcher_obj.memory[:m_total].to_i >= @watcher_obj.memory[:s_total].to_i
       l = @watcher_obj.memory[:m_total].to_s.length 
     else 
       l = @watcher_obj.memory[:s_total].to_s.length
